@@ -1,0 +1,132 @@
+================================================================
+  Job Card Details - Entry Form
+  SETUP GUIDE - Supersonic Group
+================================================================
+
+YE KYA HAI:
+  Google Sheet "Job Card Details" ke liye ek mobile-friendly
+  Web Form. Jo bhi field type karne wala hai (Job Card No.,
+  Machine Name, Material Name, etc.) uske saath ek mic button
+  hai - click karo, boliye, text apne aap type ho jaayega.
+
+  ZAROORI: Google Apps Script ke apne "/exec" form ke andar
+  (jo Extensions > Apps Script se deploy hota hai) voice/mic
+  KAAM NAHI KARTA - Google khud apne web app ko ek sandbox
+  (iframe) ke andar chalata hai jo microphone block kar deta
+  hai. Ye humare code ki galti nahi, Google ki hardcoded
+  limitation hai.
+
+  Isliye is project me 2 hisse hai:
+    1) Apps Script (Code.gs) - Sheet me data save karne ka
+       backend. Isme bhi ek form hai (bina mic ke, normal
+       typing chalti hai) - agar kabhi seedha kholna ho.
+    2) standalone/job-card-form.html - Ye asli form hai jo
+       Technicians use karenge. Isme mic bhi kaam karta hai,
+       kyunki ye GitHub Pages pe (Google ke sandbox se bahar)
+       host hoti hai. Ye sirf Sheet me data save karne ke liye
+       Apps Script ko background me call karti hai.
+
+FILES:
+  Code.gs                        -> Server logic + FIELDS config (yahi edit karo)
+  Form.html                      -> Apps Script ke apne (bina-mic) form ka structure
+  Style.html                     -> Design/CSS (Apps Script wale form ke liye)
+  ClientScript.html              -> Apps Script wale form ki JS
+  standalone/job-card-form.html  -> ASLI FORM (mic ke saath) - GitHub Pages pe jaayegi
+
+================================================================
+  STEP-BY-STEP SETUP
+================================================================
+
+STEP 1: Apni Google Sheet kholo
+  -> https://docs.google.com/spreadsheets/d/1irADS53JhWGucG7MVO9GvUPf1mVqox-99Efq-Oygq9s/edit
+  -> Top menu: Extensions -> Apps Script
+
+STEP 2: Purana default code hatao
+  -> "Code.gs" (ya "myFunction") file me jo default code hai use
+     select karke delete kardo.
+
+STEP 3: 4 files banao aur code paste karo
+  -> Code.gs        : is folder ki Code.gs ka poora code paste karo
+  -> "+" (Add file) -> HTML -> naam do "Form"          -> Form.html ka code paste karo
+  -> "+" (Add file) -> HTML -> naam do "Style"          -> Style.html ka code paste karo
+  -> "+" (Add file) -> HTML -> naam do "ClientScript"   -> ClientScript.html ka code paste karo
+  -> Ctrl+S se sab save karo
+  (File ka naam EXACTLY "Form", "Style", "ClientScript" hona chahiye -
+   .html extension Apps Script khud add kar dega)
+
+STEP 4: Sheet tab ka naam check karo
+  -> Sheet ke neeche jo tab hai uska naam dekho.
+  -> Agar "Job Card Details" nahi hai to Code.gs me line 15
+     (CONFIG.SHEET_NAME) me sahi naam daal do. Ya rehne do -
+     match na mile to script apne aap pehli tab use kar legi.
+
+STEP 5: Web App Deploy karo
+  -> Top-right "Deploy" button -> "New deployment"
+  -> Gear icon -> "Web app" select karo
+  -> Execute as: "Me"
+  -> Who has access: "Anyone" - YE ZAROORI HAI (na ki "Anyone
+     within [company]"), warna GitHub Pages wala standalone
+     form Sheet me data save nahi kar payega (login maangega).
+  -> "Deploy" click karo -> permissions allow karo (pehli baar)
+  -> Jo "Web app URL" milega (…/exec se khatam hone wala) wahi
+     copy kar lo - agle step me chahiye.
+
+STEP 6: standalone/job-card-form.html me URL daalo
+  -> Us file ko kisi text editor me kholo.
+  -> Upar "APPS_SCRIPT_URL" wali line me STEP 5 wala URL paste
+     karo (already ek URL bhara hai, wahi current deployment
+     ka hai - agar tumne dubara "New deployment" banaya na ki
+     "New version", to URL badal jaata hai, tab yahan update
+     karna padega).
+
+STEP 7: GitHub Pages pe publish karo
+  -> Ye standalone/job-card-form.html file GitHub repo me
+     push honi chahiye (SupersonicGROUP/Card-Scanner), aur us
+     repo me Settings > Pages me "main" branch se Pages enable
+     honi chahiye.
+  -> Ek baar enable hone ke baad, live form link hoga:
+     https://supersonicgroup.github.io/Card-Scanner/JobCard_Form_Script/standalone/job-card-form.html
+
+STEP 8: Link share karo
+  -> STEP 7 wala GitHub Pages URL hi Technicians ko
+     WhatsApp/Bookmark karke do (Apps Script wala /exec URL
+     nahi - usme mic nahi chalega).
+  -> Mobile pe bhi khulta hai, "Add to Home Screen" kar sakte ho
+     app jaisa lagne ke liye.
+
+================================================================
+  AGE JAKE CHANGES KARNE HO TO
+================================================================
+
+  NAYA FIELD ADD KARNA:
+    -> Code.gs me FIELDS array me ek line add karo, jaise:
+       { key: "supplierName", label: "Supplier Name", type: "text", required: false, voice: true }
+    -> Sheet me bhi wahi order me ek naya column add karo
+       (FIELDS jis order me hai, S.No ke baad wahi order Sheet me
+       hona chahiye)
+    -> Deploy -> Manage deployments -> Edit (pencil) -> Version:
+       "New version" -> Deploy (warna purana link update nahi hoga)
+
+  FIELD HATANA / NAAM BADALNA:
+    -> FIELDS array me se line hatao ya label badlo. Sheet me bhi
+       waisa hi column hatao/badlo.
+
+  VOICE INPUT ON/OFF KARNA (kisi field ke liye):
+    -> Us field ki line me voice: true ko voice: false karo.
+
+  UNIT KI SUGGESTIONS BADALNI HO:
+    -> Code.gs me UNIT_SUGGESTIONS array edit karo.
+
+  HAR BAAR CODE CHANGE KE BAAD:
+    -> Deploy -> Manage deployments -> Edit icon -> Version:
+       "New version" -> Deploy
+    -> (Sirf Save karne se live form update nahi hota, re-deploy
+       zaroori hai)
+    -> Field add/remove/rename sab kuch sirf Code.gs (FIELDS
+       array) me hota hai - standalone/job-card-form.html me
+       kuch edit karne ki zaroorat NAHI, wo Apps Script se
+       fields khud mangva leta hai. Bas redeploy karo (upar wala
+       step) aur GitHub Pages wala form apne aap naye fields
+       dikhane lagega.
+
+================================================================

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <?!= include("Style"); ?>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <h1><?= formTitle ?></h1>
+      <p><?= companyName ?></p>
+    </div>
+
+    <div id="formArea" class="form-area">
+      <!-- Fields JS se yahan generate honge (FIELDS config = source of truth) -->
+    </div>
+
+    <div id="statusBox" class="status-box" style="display:none;"></div>
+
+    <button id="submitBtn" class="submit-btn" type="button">Save Entry</button>
+  </div>
+
+  <script>
+    var FIELDS_CONFIG = <?!= fieldsJson ?>;
+    var UNIT_SUGGESTIONS = <?!= unitSuggestionsJson ?>;
+  </script>
+  <?!= include("ClientScript"); ?>
+</body>
+</html>

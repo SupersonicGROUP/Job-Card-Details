@@ -1,0 +1,206 @@
+<script>
+  var SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var voiceSupported = !!SpeechRecognitionAPI;
+  var activeRecognition = null;
+  var activeMicBtn = null;
+
+  // ---- Form ko FIELDS_CONFIG se banao ----
+  function buildForm() {
+    var container = document.getElementById("formArea");
+
+    FIELDS_CONFIG.forEach(function (field) {
+      var wrap = document.createElement("div");
+      wrap.className = "field";
+
+      var label = document.createElement("label");
+      label.setAttribute("for", "f_" + field.key);
+      label.innerHTML = field.label + (field.required ? ' <span class="required">*</span>' : "");
+      wrap.appendChild(label);
+
+      var row = document.createElement("div");
+      row.className = "input-row";
+
+      var input;
+      if (field.type === "textarea") {
+        input = document.createElement("textarea");
+      } else {
+        input = document.createElement("input");
+        input.type = (field.type === "number") ? "number" : (field.type === "date" ? "date" : "text");
+      }
+      input.id = "f_" + field.key;
+      input.dataset.key = field.key;
+
+      if (field.type === "date") {
+        var today = new Date();
+        input.value = today.toISOString().slice(0, 10);
+      }
+
+      if (field.key === "unit" && typeof UNIT_SUGGESTIONS !== "undefined") {
+        var listId = "unitList";
+        input.setAttribute("list", listId);
+        if (!document.getElementById(listId)) {
+          var datalist = document.createElement("datalist");
+          datalist.id = listId;
+          UNIT_SUGGESTIONS.forEach(function (u) {
+            var opt = document.createElement("option");
+            opt.value = u;
+            datalist.appendChild(opt);
+          });
+          document.body.appendChild(datalist);
+        }
+      }
+
+      row.appendChild(input);
+
+      if (field.voice && voiceSupported) {
+        var micBtn = document.createElement("button");
+        micBtn.type = "button";
+        micBtn.className = "mic-btn";
+        micBtn.title = "Bolke type karo";
+        micBtn.innerHTML = "&#127908;"; // microphone emoji
+        micBtn.addEventListener("click", function () {
+          toggleVoiceInput(micBtn, input, field.type === "number");
+        });
+        row.appendChild(micBtn);
+      }
+
+      wrap.appendChild(row);
+      container.appendChild(wrap);
+    });
+
+    if (!voiceSupported) {
+      var note = document.createElement("p");
+      note.className = "voice-note";
+      note.textContent = "Voice typing is chrome browser me hi kaam karta hai.";
+      container.parentNode.insertBefore(note, document.getElementById("statusBox"));
+    }
+  }
+
+  // ---- Voice input (bolke type) ----
+  function toggleVoiceInput(micBtn, inputEl, isNumberField) {
+    if (activeRecognition && activeMicBtn === micBtn) {
+      activeRecognition.stop();
+      return;
+    }
+    if (activeRecognition) {
+      activeRecognition.stop();
+    }
+
+    var recognition = new SpeechRecognitionAPI();
+    recognition.lang = "en-IN";
+    recognition.interimResults = true;
+    recognition.continuous = false;
+
+    var baseValue = inputEl.value ? inputEl.value + " " : "";
+
+    recognition.onstart = function () {
+      micBtn.classList.add("listening");
+      activeRecognition = recognition;
+      activeMicBtn = micBtn;
+    };
+
+    recognition.onresult = function (event) {
+      var transcript = "";
+      for (var i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      if (isNumberField) {
+        var digits = transcript.replace(/[^0-9.]/g, "");
+        inputEl.value = digits || inputEl.value;
+      } else {
+        inputEl.value = baseValue + transcript;
+      }
+    };
+
+    recognition.onerror = function (event) {
+      micBtn.classList.remove("listening");
+      activeRecognition = null;
+      activeMicBtn = null;
+      console.error("Voice input error:", event.error);
+      showStatus("Voice typing error: " + event.error + " (mic access block ho raha hai)", true);
+    };
+
+    recognition.onend = function () {
+      micBtn.classList.remove("listening");
+      activeRecognition = null;
+      activeMicBtn = null;
+    };
+
+    try {
+      recognition.start();
+    } catch (err) {
+      micBtn.classList.remove("listening");
+      console.error("Voice input failed to start:", err);
+      showStatus("Voice typing start nahi hua: " + err.message, true);
+    }
+  }
+
+  // ---- Submit ----
+  function collectFormData() {
+    var data = {};
+    FIELDS_CONFIG.forEach(function (field) {
+      var el = document.getElementById("f_" + field.key);
+      data[field.key] = el.value.trim();
+    });
+    return data;
+  }
+
+  function validateFormData(data) {
+    for (var i = 0; i < FIELDS_CONFIG.length; i++) {
+      var field = FIELDS_CONFIG[i];
+      if (field.required && !data[field.key]) {
+        return field.label + " bharna zaroori hai.";
+      }
+    }
+    return null;
+  }
+
+  function showStatus(message, isError) {
+    var box = document.getElementById("statusBox");
+    box.textContent = message;
+    box.className = "status-box " + (isError ? "error" : "success");
+    box.style.display = "block";
+  }
+
+  function resetForm() {
+    FIELDS_CONFIG.forEach(function (field) {
+      var el = document.getElementById("f_" + field.key);
+      if (field.type === "date") {
+        el.value = new Date().toISOString().slice(0, 10);
+      } else {
+        el.value = "";
+      }
+    });
+  }
+
+  function onSubmitClick() {
+    var data = collectFormData();
+    var errorMsg = validateFormData(data);
+    if (errorMsg) {
+      showStatus(errorMsg, true);
+      return;
+    }
+
+    var btn = document.getElementById("submitBtn");
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+
+    google.script.run
+      .withSuccessHandler(function (result) {
+        btn.disabled = false;
+        btn.textContent = "Save Entry";
+        showStatus("Saved! S.No " + result.serialNo + " sheet me add ho gaya.", false);
+        resetForm();
+        document.getElementById("f_" + FIELDS_CONFIG[1].key).focus();
+      })
+      .withFailureHandler(function (err) {
+        btn.disabled = false;
+        btn.textContent = "Save Entry";
+        showStatus("Error: " + err.message, true);
+      })
+      .submitForm(data);
+  }
+
+  document.getElementById("submitBtn").addEventListener("click", onSubmitClick);
+  buildForm();
+</script>
