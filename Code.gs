@@ -25,14 +25,14 @@ const CONFIG = {
 // voice = true matlab mic button milega (bolke type kar sakte ho).
 const FIELDS = [
   { key: "date",         label: "Date",                         type: "date",     required: true,  voice: false },
-  { key: "jobCardNo",    label: "Job Card No.",                  type: "text",     required: true,  voice: true  },
-  { key: "machineName",  label: "Machine Name",                  type: "text",     required: true,  voice: true  },
+  { key: "jobCardNo",    label: "Job Card No.",                  type: "text",     required: false,  voice: true  },
+  { key: "machineName",  label: "Machine Name",                  type: "text",     required: false,  voice: true  },
   { key: "machineSerial",label: "Machine Serial No.",            type: "text",     required: false, voice: true  },
-  { key: "materialName", label: "Material / Spare Part Name",    type: "text",     required: true,  voice: true  },
+  { key: "materialName", label: "Material / Spare Part Name",    type: "text",     required: false,  voice: true  },
   { key: "materialCode", label: "Material Code",                 type: "text",     required: false, voice: true  },
-  { key: "qtyUsed",      label: "Qty Used",                      type: "number",   required: true,  voice: true  },
+  { key: "qtyUsed",      label: "Qty Used",                      type: "number",   required: false,  voice: true  },
   { key: "unit",         label: "Unit",                          type: "text",     required: false, voice: true  },
-  { key: "technician",   label: "Technician",                    type: "text",     required: true,  voice: true  },
+  { key: "technician",   label: "Technician",                    type: "text",     required: false,  voice: true  },
   { key: "remarks",      label: "Remarks",                       type: "textarea", required: false, voice: true  }
 ];
 
