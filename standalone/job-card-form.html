@@ -196,10 +196,19 @@
 <script>
   var SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
   var voiceSupported = !!SpeechRecognitionAPI;
-  var activeRecognition = null;
-  var activeMicBtn = null;
   var FIELDS_CONFIG = [];
   var UNIT_SUGGESTIONS = [];
+
+  // Voice input ek hi shared recognition object reuse karta hai (naya banane se
+  // kai phone/browser pe pehle field ke baad wala mic silently fail ho jata tha,
+  // kyunki purana speech-service theek se release nahi hota tha).
+  var recognition = null;
+  var isListening = false;
+  var currentMicBtn = null;
+  var currentInputEl = null;
+  var currentIsNumberField = false;
+  var currentBaseValue = "";
+  var pendingStart = null;
 
   // ---- Apps Script se form config (fields) mangao ----
   function loadConfigAndBuildForm() {
@@ -293,61 +302,83 @@
   }
 
   // ---- Voice input (bolke type) ----
-  function toggleVoiceInput(micBtn, inputEl, isNumberField) {
-    if (activeRecognition && activeMicBtn === micBtn) {
-      activeRecognition.stop();
-      return;
-    }
-    if (activeRecognition) {
-      activeRecognition.stop();
-    }
+  // Ek hi recognition object banta hai (pehli baar mic dabane par), phir har
+  // field usi ko reuse karta hai. Field badalne par pehle purane wale ko
+  // properly stop hone dete hai (onend ka wait karke), tabhi naya start hota
+  // hai - isse Android/Chrome me mic dusre-teesre field par bhi kaam karta hai.
+  function ensureRecognition() {
+    if (recognition) return recognition;
 
-    var recognition = new SpeechRecognitionAPI();
+    recognition = new SpeechRecognitionAPI();
     recognition.lang = "en-IN";
     recognition.interimResults = true;
     recognition.continuous = false;
 
-    var baseValue = inputEl.value ? inputEl.value + " " : "";
-
     recognition.onstart = function () {
-      micBtn.classList.add("listening");
-      activeRecognition = recognition;
-      activeMicBtn = micBtn;
+      isListening = true;
+      if (currentMicBtn) currentMicBtn.classList.add("listening");
     };
 
     recognition.onresult = function (event) {
+      if (!currentInputEl) return;
       var transcript = "";
       for (var i = 0; i < event.results.length; i++) {
         transcript += event.results[i][0].transcript;
       }
-      if (isNumberField) {
+      if (currentIsNumberField) {
         var digits = transcript.replace(/[^0-9.]/g, "");
-        inputEl.value = digits || inputEl.value;
+        currentInputEl.value = digits || currentInputEl.value;
       } else {
-        inputEl.value = baseValue + transcript;
+        currentInputEl.value = currentBaseValue + transcript;
       }
     };
 
     recognition.onerror = function (event) {
-      micBtn.classList.remove("listening");
-      activeRecognition = null;
-      activeMicBtn = null;
       console.error("Voice input error:", event.error);
       showStatus("Voice typing error: " + event.error, true);
     };
 
     recognition.onend = function () {
-      micBtn.classList.remove("listening");
-      activeRecognition = null;
-      activeMicBtn = null;
+      isListening = false;
+      if (currentMicBtn) currentMicBtn.classList.remove("listening");
+      currentMicBtn = null;
+      currentInputEl = null;
+
+      if (pendingStart) {
+        var next = pendingStart;
+        pendingStart = null;
+        startListening(next.micBtn, next.inputEl, next.isNumberField);
+      }
     };
 
+    return recognition;
+  }
+
+  function startListening(micBtn, inputEl, isNumberField) {
+    currentMicBtn = micBtn;
+    currentInputEl = inputEl;
+    currentIsNumberField = isNumberField;
+    currentBaseValue = inputEl.value ? inputEl.value + " " : "";
     try {
-      recognition.start();
+      ensureRecognition().start();
     } catch (err) {
-      micBtn.classList.remove("listening");
       console.error("Voice input failed to start:", err);
       showStatus("Voice typing start nahi hua: " + err.message, true);
+    }
+  }
+
+  function toggleVoiceInput(micBtn, inputEl, isNumberField) {
+    ensureRecognition();
+
+    if (isListening) {
+      if (currentMicBtn === micBtn) {
+        recognition.stop(); // toggle off - onend cleans up
+      } else {
+        pendingStart = { micBtn: micBtn, inputEl: inputEl, isNumberField: isNumberField };
+        recognition.stop(); // onend will start the new field once old one fully ends
+      }
+    } else {
+      startListening(micBtn, inputEl, isNumberField);
     }
   }
 
